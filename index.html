@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IPO Hype vs Reality Predictor - An ML-powered tool that predicts whether an IPO will be Successful, Overhyped, or Underperforming.">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>IPO Hype vs Reality Predictor | ML-Powered IPO Analysis</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Custom stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Ambient glow orbs -->
+    <div class="ambient-orb ambient-orb--purple"></div>
+    <div class="ambient-orb ambient-orb--blue"></div>
+    <div class="ambient-orb ambient-orb--indigo"></div>
+
+    <div class="container">
+
+        <!-- HEADER -->
+        <header class="header">
+            <span class="header__icon">&#128202;</span>
+            <h1 class="header__title">IPO Hype vs Reality</h1>
+            <p class="header__subtitle">ML-powered prediction of IPO outcomes based on financial indicators &amp; market sentiment</p>
+            <span class="header__badge">&#129302; Machine Learning Model</span>
+        </header>
+
+        <!-- PREDICTION FORM -->
+        <div class="card">
+            <form id="prediction-form" action="/predict" method="POST">
+
+                <!-- Issue Price -->
+                <div class="form-group">
+                    <label class="form-label" for="issue_price">
+                        <span class="form-label__icon">&#128176;</span> Issue Price (Rs.)
+                    </label>
+                    <input
+                        type="number"
+                        class="form-input"
+                        id="issue_price"
+                        name="issue_price"
+                        placeholder="e.g. 1125"
+                        min="1"
+                        step="0.01"
+                        required
+                        value="{{ form_data.issue_price if form_data else '' }}"
+                    >
+                </div>
+
+                <!-- Subscription Times -->
+                <div class="form-group">
+                    <label class="form-label" for="subscribed_times">
+                        <span class="form-label__icon">&#128200;</span> Subscription Times (x)
+                    </label>
+                    <input
+                        type="number"
+                        class="form-input"
+                        id="subscribed_times"
+                        name="subscribed_times"
+                        placeholder="e.g. 35.60"
+                        min="0"
+                        step="0.01"
+                        required
+                        value="{{ form_data.subscribed_times if form_data else '' }}"
+                    >
+                </div>
+
+                <!-- Sector Dropdown -->
+                <div class="form-group">
+                    <label class="form-label" for="sector">
+                        <span class="form-label__icon">&#127970;</span> Sector
+                    </label>
+                    <select class="form-select" id="sector" name="sector" required>
+                        <option value="" disabled {% if not form_data %}selected{% endif %}>-- Select a Sector --</option>
+                        {% for s in sectors %}
+                            <option value="{{ s }}" {% if form_data and form_data.sector == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Average Sentiment Score (Slider) -->
+                <div class="form-group">
+                    <label class="form-label" for="avg_sentiment">
+                        <span class="form-label__icon">&#127925;</span> Average Sentiment Score
+                    </label>
+                    <div class="slider-container">
+                        <div id="sentiment-display" class="slider-value neutral">
+                            {{ form_data.avg_sentiment if form_data else '0.00' }}
+                        </div>
+                        <input
+                            type="range"
+                            id="avg_sentiment"
+                            name="avg_sentiment"
+                            min="-1"
+                            max="1"
+                            step="0.01"
+                            value="{{ form_data.avg_sentiment if form_data else 0 }}"
+                        >
+                        <div class="slider-labels">
+                            <span>-1.0 (Very Negative)</span>
+                            <span>0 (Neutral)</span>
+                            <span>+1.0 (Very Positive)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- News Frequency -->
+                <div class="form-group">
+                    <label class="form-label" for="news_frequency">
+                        <span class="form-label__icon">&#128240;</span> News Frequency (no. of articles)
+                    </label>
+                    <input
+                        type="number"
+                        class="form-input"
+                        id="news_frequency"
+                        name="news_frequency"
+                        placeholder="e.g. 8"
+                        min="1"
+                        max="20"
+                        required
+                        value="{{ form_data.news_frequency if form_data else '' }}"
+                    >
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-submit" id="submit-btn">
+                    &#128640; Predict IPO Outcome
+                </button>
+
+            </form>
+        </div>
+
+        <!-- RESULTS SECTION (shown only after prediction) -->
+        {% if prediction %}
+        <div class="result-card" id="result-section">
+            <div class="result-inner {{ css_class }}">
+
+                <!-- Icon based on outcome -->
+                <div class="result-icon">
+                    {% if css_class == 'success' %}
+                        <span class="result-icon-emoji">&#9989;</span>
+                    {% elif css_class == 'overhyped' %}
+                        <span class="result-icon-emoji">&#9888;</span>
+                    {% else %}
+                        <span class="result-icon-emoji">&#128201;</span>
+                    {% endif %}
+                </div>
+
+                <!-- Prediction Label -->
+                <div class="result-label">Prediction Result</div>
+                <div class="result-prediction {{ css_class }}">
+                    {{ prediction }}
+                </div>
+
+                <!-- Confidence Bar -->
+                <div class="confidence-section">
+                    <div class="confidence-header">
+                        <span class="confidence-label">Model Confidence</span>
+                        <span class="confidence-value {{ css_class }}">{{ confidence }}%</span>
+                    </div>
+                    <div class="confidence-track">
+                        <div class="confidence-fill {{ css_class }}" style="width: {{ confidence }}%;"></div>
+                    </div>
+                </div>
+
+                <!-- Explanation Text -->
+                {% if explanation %}
+                <p class="result-explanation">{{ explanation }}</p>
+                {% endif %}
+
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <div class="footer__divider"></div>
+            <p class="footer__text">
+                IPO Hype vs Reality &mdash; Machine Learning Project<br>
+                Built with &#128013; Flask &amp; &#10084; by <strong>Sara</strong>
+            </p>
+        </footer>
+
+    </div>
+
+    <script>
+        // 1. Sentiment Slider: real-time value display
+        const slider = document.getElementById('avg_sentiment');
+        const display = document.getElementById('sentiment-display');
+
+        function updateSliderDisplay(value) {
+            const num = parseFloat(value);
+            display.textContent = num > 0 ? '+' + num.toFixed(2) : num.toFixed(2);
+            display.classList.remove('negative', 'neutral', 'positive');
+            if (num < -0.2) {
+                display.classList.add('negative');
+            } else if (num > 0.2) {
+                display.classList.add('positive');
+            } else {
+                display.classList.add('neutral');
+            }
+        }
+
+        slider.addEventListener('input', function(e) {
+            updateSliderDisplay(e.target.value);
+        });
+        updateSliderDisplay(slider.value);
+
+
+        // 2. Form Validation
+        const form = document.getElementById('prediction-form');
+        const submitBtn = document.getElementById('submit-btn');
+
+        form.addEventListener('submit', function(e) {
+            const issuePrice = parseFloat(document.getElementById('issue_price').value);
+            const subTimes   = parseFloat(document.getElementById('subscribed_times').value);
+            const sector     = document.getElementById('sector').value;
+            const newsFreq   = parseInt(document.getElementById('news_frequency').value);
+
+            if (isNaN(issuePrice) || issuePrice <= 0) {
+                e.preventDefault();
+                highlightError('issue_price', 'Please enter a valid issue price greater than 0.');
+                return;
+            }
+            if (isNaN(subTimes) || subTimes < 0) {
+                e.preventDefault();
+                highlightError('subscribed_times', 'Please enter a valid subscription times value.');
+                return;
+            }
+            if (!sector) {
+                e.preventDefault();
+                highlightError('sector', 'Please select a sector.');
+                return;
+            }
+            if (isNaN(newsFreq) || newsFreq < 1 || newsFreq > 20) {
+                e.preventDefault();
+                highlightError('news_frequency', 'News frequency must be between 1 and 20.');
+                return;
+            }
+
+            submitBtn.textContent = 'Predicting...';
+            submitBtn.style.pointerEvents = 'none';
+            submitBtn.style.opacity = '0.7';
+        });
+
+        function highlightError(inputId, message) {
+            const input = document.getElementById(inputId);
+            input.style.borderColor = '#ff1744';
+            input.style.boxShadow = '0 0 0 3px rgba(255, 23, 68, 0.15)';
+            input.focus();
+            setTimeout(function() {
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+            }, 3000);
+            alert(message);
+        }
+
+
+        // 3. Smooth scroll to results after prediction
+        document.addEventListener('DOMContentLoaded', function() {
+            const resultSection = document.getElementById('result-section');
+            if (resultSection) {
+                setTimeout(function() {
+                    resultSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>
